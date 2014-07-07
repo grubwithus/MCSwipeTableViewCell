@@ -8,13 +8,15 @@
 
 #import "MCSwipeTableViewCell.h"
 
-static CGFloat const kMCStop1 = 0.25; // Percentage limit to trigger the first action
-static CGFloat const kMCStop2 = 0.75; // Percentage limit to trigger the second action
+static CGFloat const kMCStop1 = 0.33; // Percentage limit to trigger the first action
+static CGFloat const kMCStop2 = 0.66; // Percentage limit to trigger the second action
 static CGFloat const kMCBounceAmplitude = 20.0; // Maximum bounce amplitude when using the MCSwipeTableViewCellModeSwitch mode
 static NSTimeInterval const kMCBounceDuration1 = 0.2; // Duration of the first part of the bounce animation
 static NSTimeInterval const kMCBounceDuration2 = 0.1; // Duration of the second part of the bounce animation
 static NSTimeInterval const kMCDurationLowLimit = 0.25; // Lowest duration when swipping the cell because we try to simulate velocity
 static NSTimeInterval const kMCDurationHightLimit = 0.1; // Highest duration when swipping the cell because we try to simulate velocity
+
+static CGFloat const kImagePadding = 17;
 
 @interface MCSwipeTableViewCell () <UIGestureRecognizerDelegate>
 
@@ -25,6 +27,8 @@ static NSTimeInterval const kMCDurationHightLimit = 0.1; // Highest duration whe
 @property (nonatomic, strong) UIImageView *slidingImageView;
 @property (nonatomic, strong) NSString *currentImageName;
 @property (nonatomic, strong) UIView *colorIndicatorView;
+@property (nonatomic, strong) UIImageView *leftImage;
+@property (nonatomic, strong) UIImageView *rightImage;
 
 @end
 
@@ -104,7 +108,7 @@ secondStateIconName:(NSString *)secondIconName
     _shouldDrag = YES;
     
     // By default the icons are animating
-    _shouldAnimatesIcons = YES;
+    _shouldAnimatesIcons = NO;
     
     // Set state modes
     _modeForState1 = MCSwipeTableViewCellModeNone;
@@ -113,7 +117,43 @@ secondStateIconName:(NSString *)secondIconName
     _modeForState4 = MCSwipeTableViewCellModeNone;
 }
 
+- (void)layoutSubviews
+{
+	[super layoutSubviews];
+	_leftImage.frame = CGRectMake([self offsetWithPercentage:(kMCStop1 / 2) relativeToWidth:CGRectGetWidth(self.bounds)] - (_leftImage.image.size.width / 2.0) + kImagePadding,
+								  (CGRectGetHeight(_colorIndicatorView.bounds) / 2.0) - (_leftImage.image.size.height / 2.0),
+								  _leftImage.image.size.width, _leftImage.image.size.height);
+	_leftImage.alpha = 0.5;
+	_rightImage.frame = CGRectMake(CGRectGetWidth(self.bounds) - [self offsetWithPercentage:(kMCStop1 / 2) relativeToWidth:CGRectGetWidth(self.bounds)] - (_rightImage.image.size.width / 2) - kImagePadding,
+								   (CGRectGetHeight(self.bounds) / 2.0) - (_rightImage.image.size.height / 2.0),
+								   _rightImage.image.size.width, _rightImage.image.size.height);
+	_rightImage.alpha = 0.5;
+}
+
 #pragma mark - Setter
+- (void)setFirstIconName:(NSString *)firstIconName {
+	_firstIconName = firstIconName;
+	
+	if (self.leftImage) {
+		[self.leftImage removeFromSuperview];
+		self.leftImage = nil;
+	}
+	self.leftImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:self.firstIconName]];
+	_leftImage.alpha = 0;
+	[_colorIndicatorView addSubview:_leftImage];
+}
+
+- (void)setThirdIconName:(NSString *)thirdIconName {
+	_thirdIconName = thirdIconName;
+	
+	if (self.rightImage) {
+		[self.rightImage removeFromSuperview];
+		self.rightImage = nil;
+	}
+	self.rightImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:self.thirdIconName]];
+	_rightImage.alpha = 0;
+	[_colorIndicatorView addSubview:_rightImage];
+}
 
 - (void)setFirstStateIconName:(NSString *)firstIconName
                    firstColor:(UIColor *)firstColor
@@ -290,14 +330,22 @@ secondStateIconName:(NSString *)secondIconName
 }
 - (CGFloat)imageAlphaWithPercentage:(CGFloat)percentage {
     CGFloat alpha;
-    
-    if (percentage >= 0 && percentage < kMCStop1)
+	
+	if (percentage != 0) {
+		self.leftImage.alpha = 0;
+		self.rightImage.alpha = 0;
+	} else {
+		self.leftImage.alpha = 0.5;
+		self.rightImage.alpha = 0.5;
+	}
+	
+	if (percentage >= 0 && percentage < kMCStop1)
         alpha = percentage / kMCStop1;
     else if (percentage < 0 && percentage > -kMCStop1)
         alpha = fabsf(percentage / kMCStop1);
     else alpha = 1.0;
     
-    return alpha;
+    return alpha + 0.5;
 }
 
 - (UIColor *)colorWithPercentage:(CGFloat)percentage {
@@ -442,6 +490,11 @@ secondStateIconName:(NSString *)secondIconName
                                   position.y - slidingImageSize.height / 2.0,
                                   slidingImageSize.width,
                                   slidingImageSize.height);
+	if ((percentage >= 0 && percentage < kMCStop1) || (percentage >= kMCStop1)) {
+		slidingImageRect.origin.x += kImagePadding;
+	} else if ((percentage < 0 && percentage >= -kMCStop1) || (percentage < -kMCStop1)) {
+		slidingImageRect.origin.x -= kImagePadding;
+	}
     
     slidingImageRect = CGRectIntegral(slidingImageRect);
     [_slidingImageView setFrame:slidingImageRect];
@@ -483,8 +536,9 @@ secondStateIconName:(NSString *)secondIconName
                      }];
 }
 
-- (void)bounceToOrigin {
-    CGFloat bounceDistance = kMCBounceAmplitude * _currentPercentage;
+- (void)bounceToOriginNotifyDelegate:(BOOL)notify
+{
+	CGFloat bounceDistance = kMCBounceAmplitude * _currentPercentage;
     
     [UIView animateWithDuration:kMCBounceDuration1
                           delay:0
@@ -500,7 +554,6 @@ secondStateIconName:(NSString *)secondIconName
                          _colorIndicatorView.backgroundColor = self.defaultColor;
                      }
                      completion:^(BOOL finished1) {
-                         
                          [UIView animateWithDuration:kMCBounceDuration2
                                                delay:0
                                              options:UIViewAnimationOptionCurveEaseIn
@@ -513,10 +566,20 @@ secondStateIconName:(NSString *)secondIconName
                                               _colorIndicatorView.backgroundColor = [UIColor clearColor];
                                           }
                                           completion:^(BOOL finished2) {
-                                              [self notifyDelegate];
+											  if (notify) {
+												  [self notifyDelegate];
+											  }
+											  self.leftImage.alpha = 0.5;
+											  self.rightImage.alpha = 0.5;
                                           }];
                      }];
+
 }
+
+- (void)bounceToOrigin {
+	[self bounceToOriginNotifyDelegate:YES];
+}
+
 
 #pragma mark - Delegate Notification
 

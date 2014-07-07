@@ -96,4 +96,7 @@ secondStateIconName:(NSString *)secondIconName
                fourthIconName:(NSString *)fourthIconName
                   fourthColor:(UIColor *)fourthColor;
 
+- (void)bounceToOrigin;
+- (void)bounceToOriginNotifyDelegate:(BOOL)notify;
+
 @end
