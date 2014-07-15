@@ -134,24 +134,26 @@ secondStateIconName:(NSString *)secondIconName
 - (void)setFirstIconName:(NSString *)firstIconName {
 	_firstIconName = firstIconName;
 	
-	if (self.leftImage) {
-		[self.leftImage removeFromSuperview];
-		self.leftImage = nil;
+	if (!self.leftImage) {
+		self.leftImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:firstIconName]];
+		_leftImage.alpha = 0;
+	} else {
+		_leftImage.alpha = 0.5;
+		_leftImage.image = [UIImage imageNamed:firstIconName];
 	}
-	self.leftImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:self.firstIconName]];
-	_leftImage.alpha = 0;
 	[_colorIndicatorView addSubview:_leftImage];
 }
 
 - (void)setThirdIconName:(NSString *)thirdIconName {
 	_thirdIconName = thirdIconName;
 	
-	if (self.rightImage) {
-		[self.rightImage removeFromSuperview];
-		self.rightImage = nil;
+	if (!self.rightImage) {
+		self.rightImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:self.thirdIconName]];
+		_rightImage.alpha = 0;
+	} else {
+		_rightImage.alpha = 0.5;
+		_rightImage.image = [UIImage imageNamed:thirdIconName];
 	}
-	self.rightImage = [[UIImageView alloc] initWithImage:[UIImage imageNamed:self.thirdIconName]];
-	_rightImage.alpha = 0;
 	[_colorIndicatorView addSubview:_rightImage];
 }
 
